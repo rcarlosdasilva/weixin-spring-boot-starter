@@ -121,7 +121,7 @@ public class WeixinAutoConfiguration {
     Preconditions.checkNotNull(key);
     Preconditions.checkNotNull(account);
 
-    WeixinRegistry.registry(key, account);
+    WeixinRegistry.register(key, account);
     logger.info("已加载公众号 with key: {}", key);
   }
 
