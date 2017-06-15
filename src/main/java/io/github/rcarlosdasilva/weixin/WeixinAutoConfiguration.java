@@ -19,8 +19,8 @@ import com.google.common.base.Preconditions;
 import io.github.rcarlosdasilva.weixin.api.Weixin;
 import io.github.rcarlosdasilva.weixin.core.WeixinRegistry;
 import io.github.rcarlosdasilva.weixin.core.cache.holder.RedisTemplateHandler;
-import io.github.rcarlosdasilva.weixin.core.config.RedisConfiguration;
 import io.github.rcarlosdasilva.weixin.core.loader.AccountLoader;
+import io.github.rcarlosdasilva.weixin.core.registry.RedisConfiguration;
 import io.github.rcarlosdasilva.weixin.model.Account;
 import io.github.rcarlosdasilva.weixin.properties.CacheType;
 import io.github.rcarlosdasilva.weixin.properties.WeixinProperties;
@@ -53,7 +53,7 @@ public class WeixinAutoConfiguration {
   }
 
   private void config() {
-    io.github.rcarlosdasilva.weixin.core.config.Configuration configuration = new io.github.rcarlosdasilva.weixin.core.config.Configuration();
+    io.github.rcarlosdasilva.weixin.core.registry.Configuration configuration = new io.github.rcarlosdasilva.weixin.core.registry.Configuration();
     configuration.setThrowException(weixinProperties.isThrowException());
 
     if (weixinProperties.getCacheType() == CacheType.REIDS) {
@@ -68,7 +68,7 @@ public class WeixinAutoConfiguration {
       }
     }
 
-    WeixinRegistry.config(configuration);
+    WeixinRegistry.withConfig(configuration);
   }
 
   private RedisConfiguration copyReidsConfig() {
