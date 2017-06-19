@@ -10,6 +10,7 @@ public class WeixinProperties {
   private boolean throwException = false;
   private CacheType cacheType = CacheType.MEMORY;
   private boolean useSpringRedisConfig = false;
+  private WeixinOpenPlatformProperties openPlatform;
   private WeixinRedisProperties redis;
 
   public boolean isThrowException() {
@@ -34,6 +35,14 @@ public class WeixinProperties {
 
   public void setUseSpringRedisConfig(boolean useSpringRedisConfig) {
     this.useSpringRedisConfig = useSpringRedisConfig;
+  }
+
+  public WeixinOpenPlatformProperties getOpenPlatform() {
+    return openPlatform;
+  }
+
+  public void setOpenPlatform(WeixinOpenPlatformProperties openPlatform) {
+    this.openPlatform = openPlatform;
   }
 
   public WeixinRedisProperties getRedis() {
