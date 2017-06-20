@@ -19,7 +19,12 @@ import io.github.rcarlosdasilva.weixin.core.WeixinRegistry;
 import io.github.rcarlosdasilva.weixin.core.cache.holder.RedisTemplateHandler;
 import io.github.rcarlosdasilva.weixin.core.handler.NotificationHandler;
 import io.github.rcarlosdasilva.weixin.core.handler.NotificationHandlerProxy;
-import io.github.rcarlosdasilva.weixin.core.registry.RedisConfiguration;
+import io.github.rcarlosdasilva.weixin.core.listener.AccessTokenUpdatedListener;
+import io.github.rcarlosdasilva.weixin.core.listener.JsTicketUpdatedListener;
+import io.github.rcarlosdasilva.weixin.core.listener.OpenPlatformAccessTokenUpdatedListener;
+import io.github.rcarlosdasilva.weixin.core.listener.OpenPlatformLisensorAccessTokenUpdatedListener;
+import io.github.rcarlosdasilva.weixin.core.registry.RedisSetting;
+import io.github.rcarlosdasilva.weixin.core.registry.Setting;
 import io.github.rcarlosdasilva.weixin.extension.AccountLoader;
 import io.github.rcarlosdasilva.weixin.model.Account;
 import io.github.rcarlosdasilva.weixin.properties.CacheType;
@@ -45,6 +50,15 @@ public class WeixinAutoConfiguration implements SmartInitializingSingleton {
   @Autowired(required = false)
   private AccountLoader accountLoader;
 
+  @Autowired(required = false)
+  private AccessTokenUpdatedListener accessTokenUpdatedListener;
+  @Autowired(required = false)
+  private JsTicketUpdatedListener jsTicketUpdatedListener;
+  @Autowired(required = false)
+  private OpenPlatformAccessTokenUpdatedListener openPlatformAccessTokenUpdatedListener;
+  @Autowired(required = false)
+  private OpenPlatformLisensorAccessTokenUpdatedListener openPlatformLisensorAccessTokenUpdatedListener;
+
   @Override
   public void afterSingletonsInstantiated() {
     if (weixinProperties == null) {
@@ -61,28 +75,59 @@ public class WeixinAutoConfiguration implements SmartInitializingSingleton {
   private void config() {
     logger.debug("Weixin Config Doing [开始配置微信相关参数]");
 
-    io.github.rcarlosdasilva.weixin.core.registry.Configuration configuration = new io.github.rcarlosdasilva.weixin.core.registry.Configuration();
+    Setting setting = new Setting();
 
+    configBasic(setting);
+    configListener(setting);
+    configOpenPlatform();
+    configNotificationHandler();
+
+    WeixinRegistry.withSetting(setting);
+
+    logger.info("Weixin Config Done [微信相关参数已配置完毕]");
+  }
+
+  private void configBasic(Setting setting) {
     final boolean throwException = weixinProperties.isThrowException();
-    configuration.setThrowException(throwException);
+    setting.setThrowException(throwException);
     logger.debug("Weixin Config [微信接口调用错误时，转为异常抛出]: {}", throwException);
 
     final CacheType cacheType = weixinProperties.getCacheType();
     logger.debug("Weixin Config [缓存方式]: {}", cacheType);
     if (cacheType == CacheType.REIDS) {
-      configuration.setUseRedisCache(true);
+      setting.setUseRedisCache(true);
 
       final boolean useSpringRedis = weixinProperties.isUseSpringRedisConfig();
       logger.debug("Weixin Config [使用Spring配置好的Redis缓存]: {}", useSpringRedis);
       if (useSpringRedis) {
-        configuration.setUseSpringRedis(true);
+        setting.setUseSpringRedis(true);
         RedisTemplateHandler.redisTemplate = redisTemplate;
       } else {
-        RedisConfiguration redisConfiguration = copyReidsConfig();
-        configuration.setRedisConfiguration(redisConfiguration);
+        setting.setRedisSetting(copyReidsSetting());
       }
     }
+  }
 
+  private void configListener(Setting setting) {
+    if (accessTokenUpdatedListener != null) {
+      logger.debug("Weixin Config [注册AccessTokenUpdatedListener]");
+      setting.addListener(accessTokenUpdatedListener);
+    }
+    if (jsTicketUpdatedListener != null) {
+      logger.debug("Weixin Config [注册JsTicketUpdatedListener]");
+      setting.addListener(jsTicketUpdatedListener);
+    }
+    if (openPlatformAccessTokenUpdatedListener != null) {
+      logger.debug("Weixin Config [注册OpenPlatformAccessTokenUpdatedListener]");
+      setting.addListener(openPlatformAccessTokenUpdatedListener);
+    }
+    if (openPlatformLisensorAccessTokenUpdatedListener != null) {
+      logger.debug("Weixin Config [注册OpenPlatformLisensorAccessTokenUpdatedListener]");
+      setting.addListener(openPlatformLisensorAccessTokenUpdatedListener);
+    }
+  }
+
+  private void configOpenPlatform() {
     WeixinOpenPlatformProperties openPlatformProperties = weixinProperties.getOpenPlatform();
     if (openPlatformProperties != null) {
       logger.debug("Weixin Config [开放平台相关参数]: ");
@@ -98,26 +143,23 @@ public class WeixinAutoConfiguration implements SmartInitializingSingleton {
         WeixinRegistry.openPlatform(appId, appSecret, aesToken, aesKey);
       }
     }
+  }
 
+  private void configNotificationHandler() {
     if (notificationHandler != null) {
       logger.debug("Weixin Config [微信通知处理器NotificationHandler]: {}" + notificationHandler);
       NotificationHandlerProxy.proxy(notificationHandler);
     } else {
       logger.warn("Weixin Config [没有找到有效的微信通知处理器NotificationHandler，可能会无法处理微信通知]");
     }
-
-    WeixinRegistry.withConfig(configuration);
-    WeixinRegistry.done();
-
-    logger.info("Weixin Config Done [微信相关参数已配置完毕]");
   }
 
-  private RedisConfiguration copyReidsConfig() {
+  private RedisSetting copyReidsSetting() {
     if (weixinProperties.getRedis() == null) {
       logger.error("无法加载Spring Redis配置");
     }
 
-    RedisConfiguration redisConfiguration = new RedisConfiguration();
+    RedisSetting redisConfiguration = new RedisSetting();
     WeixinRedisProperties wrp = weixinProperties.getRedis();
     redisConfiguration.setHost(wrp.getHost());
     redisConfiguration.setPort(wrp.getPort());
