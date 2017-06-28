@@ -1,6 +1,6 @@
 package io.github.rcarlosdasilva.weixin;
 
-import java.util.Map;
+import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -186,25 +186,24 @@ public class WeixinAutoConfiguration implements SmartInitializingSingleton {
       return;
     }
 
-    final Map<String, Account> accountMap = accountLoader.loadAsMap();
-    final boolean validMap = accountMap != null && !accountMap.isEmpty();
-    if (validMap) {
-      for (String key : accountMap.keySet()) {
-        registerOne(key, accountMap.get(key));
-      }
-    } else {
+    final List<Account> accounts = accountLoader.load();
+    if (accounts == null || accounts.isEmpty()) {
       logger.warn("Weixin Account [未找到任何公众号数据可加载]");
+      return;
+    }
+
+    for (Account account : accounts) {
+      registerOne(account);
     }
 
     logger.info("Weixin Account Done [微信公众号数据加载完毕]");
   }
 
-  private void registerOne(String key, Account account) {
-    Preconditions.checkNotNull(key);
+  private void registerOne(Account account) {
     Preconditions.checkNotNull(account);
 
-    WeixinRegistry.register(key, account);
-    logger.info("Weixin Account [加载 ]: {}", key);
+    logger.info("Weixin Account [加载 ]: {}", account.getKey());
+    WeixinRegistry.register(account);
   }
 
 }

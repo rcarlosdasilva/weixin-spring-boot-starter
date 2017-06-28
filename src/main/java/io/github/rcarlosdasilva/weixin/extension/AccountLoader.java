@@ -1,6 +1,6 @@
 package io.github.rcarlosdasilva.weixin.extension;
 
-import java.util.Map;
+import java.util.List;
 
 import io.github.rcarlosdasilva.weixin.model.Account;
 
@@ -14,10 +14,10 @@ public interface AccountLoader {
   /**
    * 加载需要注册的微信公众号信息，加载后会自动注册.
    * <p>
-   * 返回的Map中，Key就是注册公众号时使用的Key。
+   * 返回的Account中，Key就是注册公众号时使用的Key。
    * 
    * @return 公众号集合
    */
-  Map<String, Account> loadAsMap();
+  List<Account> load();
 
 }
