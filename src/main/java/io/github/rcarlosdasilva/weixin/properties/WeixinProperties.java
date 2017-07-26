@@ -10,6 +10,7 @@ public class WeixinProperties {
   private boolean throwException = false;
   private CacheType cacheType = CacheType.MEMORY;
   private boolean useSpringRedisConfig = false;
+  private boolean autoLoadAuthorizedWeixinData = true;
   private WeixinOpenPlatformProperties openPlatform;
   private WeixinRedisProperties redis;
 
@@ -35,6 +36,14 @@ public class WeixinProperties {
 
   public void setUseSpringRedisConfig(boolean useSpringRedisConfig) {
     this.useSpringRedisConfig = useSpringRedisConfig;
+  }
+
+  public boolean isAutoLoadAuthorizedWeixinData() {
+    return autoLoadAuthorizedWeixinData;
+  }
+
+  public void setAutoLoadAuthorizedWeixinData(boolean autoLoadAuthorizedWeixinData) {
+    this.autoLoadAuthorizedWeixinData = autoLoadAuthorizedWeixinData;
   }
 
   public WeixinOpenPlatformProperties getOpenPlatform() {

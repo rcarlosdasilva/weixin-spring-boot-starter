@@ -92,6 +92,10 @@ public class WeixinAutoConfiguration implements SmartInitializingSingleton {
     setting.setThrowException(throwException);
     logger.debug("Weixin Config [微信接口调用错误时，转为异常抛出]: {}", throwException);
 
+    final boolean autoLoadAuthorizedWeixinData = weixinProperties.isAutoLoadAuthorizedWeixinData();
+    setting.setAutoLoadAuthorizedWeixinData(autoLoadAuthorizedWeixinData);
+    logger.debug("Weixin Config [授权成功后(POST)自动获取公众号信息]: {}", autoLoadAuthorizedWeixinData);
+
     final CacheType cacheType = weixinProperties.getCacheType();
     logger.debug("Weixin Config [缓存方式]: {}", cacheType);
     if (cacheType == CacheType.REIDS) {
