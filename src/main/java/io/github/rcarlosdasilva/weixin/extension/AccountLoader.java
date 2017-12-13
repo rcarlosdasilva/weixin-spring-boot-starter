@@ -2,7 +2,7 @@ package io.github.rcarlosdasilva.weixin.extension;
 
 import java.util.List;
 
-import io.github.rcarlosdasilva.weixin.model.Account;
+import io.github.rcarlosdasilva.weixin.model.WeixinAccount;
 
 /**
  * 微信公众号加载器
@@ -18,6 +18,6 @@ public interface AccountLoader {
    * 
    * @return 公众号集合
    */
-  List<Account> load();
+  List<WeixinAccount> load();
 
 }

@@ -11,30 +11,27 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.core.RedisTemplate;
 
-import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 
-import io.github.rcarlosdasilva.weixin.api.Weixin;
-import io.github.rcarlosdasilva.weixin.core.WeixinRegistry;
-import io.github.rcarlosdasilva.weixin.core.cache.holder.RedisTemplateHandler;
+import io.github.rcarlosdasilva.weixin.core.Registry;
+import io.github.rcarlosdasilva.weixin.core.Weixin;
+import io.github.rcarlosdasilva.weixin.core.cache.CacheType;
+import io.github.rcarlosdasilva.weixin.core.cache.storage.redis.RedisHandler;
 import io.github.rcarlosdasilva.weixin.core.handler.NotificationHandler;
 import io.github.rcarlosdasilva.weixin.core.handler.NotificationHandlerProxy;
+import io.github.rcarlosdasilva.weixin.core.inspect.InspectDispatcher;
 import io.github.rcarlosdasilva.weixin.core.listener.AccessTokenUpdatedListener;
 import io.github.rcarlosdasilva.weixin.core.listener.JsTicketUpdatedListener;
 import io.github.rcarlosdasilva.weixin.core.listener.OpenPlatformAccessTokenUpdatedListener;
 import io.github.rcarlosdasilva.weixin.core.listener.OpenPlatformLisensorAccessTokenUpdatedListener;
-import io.github.rcarlosdasilva.weixin.core.registry.RedisSetting;
-import io.github.rcarlosdasilva.weixin.core.registry.Setting;
+import io.github.rcarlosdasilva.weixin.core.setting.Setting;
 import io.github.rcarlosdasilva.weixin.extension.AccountLoader;
-import io.github.rcarlosdasilva.weixin.model.Account;
-import io.github.rcarlosdasilva.weixin.properties.CacheType;
+import io.github.rcarlosdasilva.weixin.model.WeixinAccount;
 import io.github.rcarlosdasilva.weixin.properties.WeixinOpenPlatformProperties;
 import io.github.rcarlosdasilva.weixin.properties.WeixinProperties;
-import io.github.rcarlosdasilva.weixin.properties.WeixinRedisProperties;
-import redis.clients.jedis.JedisPoolConfig;
 
 @Configuration
-@ConditionalOnClass({ WeixinRegistry.class, Weixin.class })
+@ConditionalOnClass({ Registry.class, Weixin.class })
 @EnableConfigurationProperties({ WeixinProperties.class })
 public class WeixinAutoConfiguration implements SmartInitializingSingleton {
 
@@ -68,6 +65,7 @@ public class WeixinAutoConfiguration implements SmartInitializingSingleton {
 
     config();
     loadWeixin();
+    InspectDispatcher.startup();
 
     logger.info("Weixin Auto Configuration [微信相关自动配置完毕]");
   }
@@ -75,59 +73,45 @@ public class WeixinAutoConfiguration implements SmartInitializingSingleton {
   private void config() {
     logger.debug("Weixin Config Doing [开始配置微信相关参数]");
 
-    Setting setting = new Setting();
-
-    configBasic(setting);
-    configListener(setting);
+    Setting setting = weixinProperties.getSetting();
+    basic(setting);
+    configListener();
     configOpenPlatform();
     configNotificationHandler();
 
-    WeixinRegistry.withSetting(setting);
+    Registry.withSetting(setting);
 
     logger.info("Weixin Config Done [微信相关参数已配置完毕]");
   }
 
-  private void configBasic(Setting setting) {
-    final boolean throwException = weixinProperties.isThrowException();
-    setting.setThrowException(throwException);
-    logger.debug("Weixin Config [微信接口调用错误时，转为异常抛出]: {}", throwException);
+  private void basic(Setting setting) {
+    logger.debug("Weixin Config [微信接口调用错误时，转为异常抛出]: {}", setting.isThrowException());
 
-    final boolean autoLoadAuthorizedWeixinData = weixinProperties.isAutoLoadAuthorizedWeixinData();
-    setting.setAutoLoadAuthorizedWeixinData(autoLoadAuthorizedWeixinData);
-    logger.debug("Weixin Config [授权成功后(POST)自动获取公众号信息]: {}", autoLoadAuthorizedWeixinData);
+    logger.debug("Weixin Config [授权成功后(POST)自动获取公众号信息]: {}",
+        setting.isAutoLoadAuthorizedWeixinData());
 
-    final CacheType cacheType = weixinProperties.getCacheType();
-    logger.debug("Weixin Config [缓存方式]: {}", cacheType);
-    if (cacheType == CacheType.REIDS) {
-      setting.setUseRedisCache(true);
-
-      final boolean useSpringRedis = weixinProperties.isUseSpringRedisConfig();
-      logger.debug("Weixin Config [使用Spring配置好的Redis缓存]: {}", useSpringRedis);
-      if (useSpringRedis) {
-        setting.setUseSpringRedis(true);
-        RedisTemplateHandler.redisTemplate = redisTemplate;
-      } else {
-        setting.setRedisSetting(copyReidsSetting());
-      }
+    logger.debug("Weixin Config [缓存方式]: {}", setting.getCacheType());
+    if (setting.getCacheType() == CacheType.SPRING_REDIS && redisTemplate != null) {
+      RedisHandler.setRedisTemplate(redisTemplate);
     }
   }
 
-  private void configListener(Setting setting) {
+  private void configListener() {
     if (accessTokenUpdatedListener != null) {
       logger.debug("Weixin Config [注册AccessTokenUpdatedListener]");
-      setting.addListener(accessTokenUpdatedListener);
+      Registry.listener(accessTokenUpdatedListener);
     }
     if (jsTicketUpdatedListener != null) {
       logger.debug("Weixin Config [注册JsTicketUpdatedListener]");
-      setting.addListener(jsTicketUpdatedListener);
+      Registry.listener(jsTicketUpdatedListener);
     }
     if (openPlatformAccessTokenUpdatedListener != null) {
       logger.debug("Weixin Config [注册OpenPlatformAccessTokenUpdatedListener]");
-      setting.addListener(openPlatformAccessTokenUpdatedListener);
+      Registry.listener(openPlatformAccessTokenUpdatedListener);
     }
     if (openPlatformLisensorAccessTokenUpdatedListener != null) {
       logger.debug("Weixin Config [注册OpenPlatformLisensorAccessTokenUpdatedListener]");
-      setting.addListener(openPlatformLisensorAccessTokenUpdatedListener);
+      Registry.listener(openPlatformLisensorAccessTokenUpdatedListener);
     }
   }
 
@@ -144,42 +128,18 @@ public class WeixinAutoConfiguration implements SmartInitializingSingleton {
           || Strings.isNullOrEmpty(aesToken) || Strings.isNullOrEmpty(aesKey)) {
         logger.warn("Weixin Config [开放平台参数不全，将无法使用开放平台相关功能]");
       } else {
-        WeixinRegistry.openPlatform(appId, appSecret, aesToken, aesKey);
+        Registry.openPlatform(appId, appSecret, aesToken, aesKey);
       }
     }
   }
 
   private void configNotificationHandler() {
     if (notificationHandler != null) {
-      logger.debug("Weixin Config [微信通知处理器NotificationHandler]: {}" + notificationHandler);
+      logger.debug("Weixin Config [微信通知处理器NotificationHandler]: {}", notificationHandler);
       NotificationHandlerProxy.proxy(notificationHandler);
     } else {
       logger.warn("Weixin Config [没有找到有效的微信通知处理器NotificationHandler，可能会无法处理微信通知]");
     }
-  }
-
-  private RedisSetting copyReidsSetting() {
-    if (weixinProperties.getRedis() == null) {
-      logger.error("无法加载Spring Redis配置");
-    }
-
-    RedisSetting redisConfiguration = new RedisSetting();
-    WeixinRedisProperties wrp = weixinProperties.getRedis();
-    redisConfiguration.setHost(wrp.getHost());
-    redisConfiguration.setPort(wrp.getPort());
-    redisConfiguration.setPassword(wrp.getPassword());
-    redisConfiguration.setDatabase(wrp.getDatabase());
-    redisConfiguration.setTimeout(wrp.getTimeout());
-    redisConfiguration.setUseSsl(wrp.isSsl());
-
-    JedisPoolConfig poolConfig = new JedisPoolConfig();
-    poolConfig.setMaxIdle(wrp.getPool().getMaxIdle());
-    poolConfig.setMaxTotal(wrp.getPool().getMaxActive());
-    poolConfig.setMaxWaitMillis(wrp.getPool().getMaxWait());
-    poolConfig.setMinIdle(wrp.getPool().getMinIdle());
-    redisConfiguration.setConfig(poolConfig);
-
-    return redisConfiguration;
   }
 
   public void loadWeixin() {
@@ -190,24 +150,17 @@ public class WeixinAutoConfiguration implements SmartInitializingSingleton {
       return;
     }
 
-    final List<Account> accounts = accountLoader.load();
+    final List<WeixinAccount> accounts = accountLoader.load();
     if (accounts == null || accounts.isEmpty()) {
       logger.warn("Weixin Account [未找到任何公众号数据可加载]");
       return;
     }
 
-    for (Account account : accounts) {
-      registerOne(account);
+    for (WeixinAccount account : accounts) {
+      Registry.checkin(account);
     }
 
     logger.info("Weixin Account Done [微信公众号数据加载完毕]");
-  }
-
-  private void registerOne(Account account) {
-    Preconditions.checkNotNull(account);
-
-    logger.info("Weixin Account [加载 ]: {}", account.getKey());
-    WeixinRegistry.register(account);
   }
 
 }

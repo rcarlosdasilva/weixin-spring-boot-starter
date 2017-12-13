@@ -2,49 +2,15 @@ package io.github.rcarlosdasilva.weixin.properties;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+import io.github.rcarlosdasilva.weixin.core.setting.Setting;
+
 @ConfigurationProperties(prefix = WeixinProperties.WEIXIN_PREFIX)
 public class WeixinProperties {
 
   public static final String WEIXIN_PREFIX = "weixin";
 
-  private boolean throwException = false;
-  private CacheType cacheType = CacheType.MEMORY;
-  private boolean useSpringRedisConfig = false;
-  private boolean autoLoadAuthorizedWeixinData = true;
   private WeixinOpenPlatformProperties openPlatform;
-  private WeixinRedisProperties redis;
-
-  public boolean isThrowException() {
-    return throwException;
-  }
-
-  public void setThrowException(boolean throwException) {
-    this.throwException = throwException;
-  }
-
-  public CacheType getCacheType() {
-    return cacheType;
-  }
-
-  public void setCacheType(CacheType cacheType) {
-    this.cacheType = cacheType;
-  }
-
-  public boolean isUseSpringRedisConfig() {
-    return useSpringRedisConfig;
-  }
-
-  public void setUseSpringRedisConfig(boolean useSpringRedisConfig) {
-    this.useSpringRedisConfig = useSpringRedisConfig;
-  }
-
-  public boolean isAutoLoadAuthorizedWeixinData() {
-    return autoLoadAuthorizedWeixinData;
-  }
-
-  public void setAutoLoadAuthorizedWeixinData(boolean autoLoadAuthorizedWeixinData) {
-    this.autoLoadAuthorizedWeixinData = autoLoadAuthorizedWeixinData;
-  }
+  private Setting setting = new Setting();
 
   public WeixinOpenPlatformProperties getOpenPlatform() {
     return openPlatform;
@@ -54,12 +20,12 @@ public class WeixinProperties {
     this.openPlatform = openPlatform;
   }
 
-  public WeixinRedisProperties getRedis() {
-    return redis;
+  public Setting getSetting() {
+    return setting;
   }
 
-  public void setRedis(WeixinRedisProperties redis) {
-    this.redis = redis;
+  public void setSetting(Setting setting) {
+    this.setting = setting;
   }
 
 }
